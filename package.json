@@ -1,0 +1,57 @@
+{
+  "name": "symbols-view-plus",
+  "version": "0.0.1",
+  "main": "./lib/main",
+  "description": "Jump to a function/method in the current editor or in the project.",
+  "activationCommands": {
+    "atom-workspace": [
+      "symbols-view-plus:toggle-project-symbols"
+    ],
+    "atom-text-editor": [
+      "symbols-view-plus:go-to-declaration",
+      "symbols-view-plus:return-from-declaration",
+      "symbols-view-plus:toggle-file-symbols"
+    ]
+  },
+  "engines": {
+    "atom": "*",
+    "node": ">=14"
+  },
+  "configSchema": {
+    "quickJumpToFileSymbol": {
+      "default": true,
+      "type": "boolean",
+      "description": "Automatically visit selected file-symbols as you navigate the symbols list."
+    },
+    "showProviderNameInSymbolsView": {
+      "default": true,
+      "type": "boolean",
+      "description": "When enabled, the name of the provider will be shown along with the results."
+    },
+    "preferCertainProviders": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "A comma-separated list of preferred providers. Used to help break ties when more than one provider can contribute symbols. Anything on this list will be preferred over anything not on this list, and earlier items will be preferred over later items."
+    }
+  },
+  "consumedServices": {
+    "symbol.provider": {
+      "description": "Allows external sources to suggest symbols for a given file or project.",
+      "versions": {
+        "1.0.0": "consumeSymbolProvider"
+      }
+    }
+  },
+  "license": "MIT",
+  "dependencies": {
+    "atom-select-list": "^0.8.1",
+    "fs-plus": "^3.1.1",
+    "fuzzaldrin": "^2.1.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.39.0"
+  }
+}

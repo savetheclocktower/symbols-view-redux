@@ -23,10 +23,10 @@
       "type": "boolean",
       "description": "Automatically visit selected file-symbols as you navigate the symbols list."
     },
-    "showProviderNameInSymbolsView": {
+    "showProviderNamesInSymbolsView": {
       "default": true,
       "type": "boolean",
-      "description": "When enabled, the name of the provider will be shown along with the results."
+      "description": "When enabled, the name of the provider will be shown alongside each result."
     },
     "preferCertainProviders": {
       "default": [],
@@ -48,10 +48,11 @@
   "license": "MIT",
   "dependencies": {
     "atom-select-list": "^0.8.1",
-    "fs-plus": "^3.1.1",
     "fuzzaldrin": "^2.1.0"
   },
   "devDependencies": {
-    "eslint": "^8.39.0"
+    "eslint": "^8.39.0",
+    "fs-plus": "^3.1.1",
+    "temp": "^0.9.4"
   }
 }

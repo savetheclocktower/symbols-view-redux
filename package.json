@@ -24,7 +24,7 @@
       "description": "Automatically visit selected file-symbols as you navigate the symbols list."
     },
     "showProviderNamesInSymbolsView": {
-      "default": true,
+      "default": false,
       "type": "boolean",
       "description": "When enabled, the name of the provider will be shown alongside each result."
     },

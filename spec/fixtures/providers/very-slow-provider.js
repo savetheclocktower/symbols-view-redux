@@ -19,7 +19,6 @@ module.exports = {
     let results = [];
     await wait(3000);
     if (signal.aborted) {
-      console.log('Aha!');
       return null;
     }
     return [

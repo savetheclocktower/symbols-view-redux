@@ -5,10 +5,12 @@ const temp = require('temp');
 const SymbolsView = require('../lib/symbols-view');
 
 const DummyProvider = require('./fixtures/providers/dummy-provider');
+const QuicksortProvider = require('./fixtures/providers/quicksort-provider.js');
 const VerySlowProvider = require('./fixtures/providers/very-slow-provider');
 const UselessProvider = require('./fixtures/providers/useless-provider.js');
 const EmptyProvider = require('./fixtures/providers/empty-provider.js');
 const TaggedProvider = require('./fixtures/providers/tagged-provider.js');
+const CacheClearingProvider = require('./fixtures/providers/cache-clearing-provider.js');
 const CompetingExclusiveProvider = require('./fixtures/providers/competing-exclusive-provider.js');
 
 const { it, fit, ffit, fffit, beforeEach, afterEach, conditionPromise } = require('./async-spec-helpers');
@@ -16,6 +18,10 @@ const { it, fit, ffit, fffit, beforeEach, afterEach, conditionPromise } = requir
 
 async function wait (ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function getOrScheduleUpdatePromise () {
+  return new Promise((resolve) => etch.getScheduler().updateDocument(resolve))
 }
 
 function choiceCount (symbolsView) {
@@ -54,6 +60,9 @@ function registerProvider (...args) {
       }
       disposable.dispose();
     });
+    // If we let the package lazy-activate the first time a command is invoked,
+    // we lose an opportunity to add mock providers. So we should activate it
+    // manually.
     atom.packages.getLoadedPackage('symbols-view-plus').activateNow();
   } else {
     for (let provider of args) {
@@ -90,6 +99,10 @@ describe('SymbolsView', () => {
     jasmine.attachToDOM(getWorkspaceView());
   });
 
+  afterEach(async () => {
+    await atom.packages.deactivatePackage('symbols-view-plus');
+  });
+
   describe('when toggling file symbols', () => {
     beforeEach(async () => {
       await atom.workspace.open(directory.resolve('sample.js'))
@@ -98,13 +111,15 @@ describe('SymbolsView', () => {
     it('displays all symbols with line numbers', async () => {
       registerProvider(DummyProvider);
       await activationPromise;
-      atom.commands.dispatch(getEditorView(), 'symbols-view-plus:toggle-file-symbols');
-
-      symbolsView = atom.workspace.getModalPanels()[0].item;
-      await conditionPromise(() => {
-        let count = symbolsView.element.querySelectorAll('li').length;
-        return count > 0;
-      });
+      await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+      // atom.commands.dispatch(getEditorView(), 'symbols-view-plus:toggle-file-symbols');
+      //
+      // symbolsView = atom.workspace.getModalPanels()[0].item;
+      // await conditionPromise(() => {
+      //   let count = symbolsView.element.querySelectorAll('li').length;
+      //   return count > 0;
+      // });
+      symbolsView = getSymbolsView();
 
       expect(symbolsView.selectListView.refs.loadingMessage).toBeUndefined();
       expect(document.body.contains(symbolsView.element)).toBe(true);
@@ -159,6 +174,38 @@ describe('SymbolsView', () => {
       expect(symbolsView.selectListView.refs.loadingMessage).toBeUndefined();
       expect(choiceCount(symbolsView)).toBe(5);
       expect(DummyProvider.getSymbols).toHaveBeenCalled();
+      editor.destroy();
+      expect(symbolsView.cachedResults.get(editor)).toBeUndefined();
+    });
+
+    it("invalidates a single provider's tags if the provider asks it to", async () => {
+      registerProvider(DummyProvider, CacheClearingProvider);
+      await activationPromise;
+      editor = atom.workspace.getActiveTextEditor();
+      await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+      symbolsView = atom.workspace.getModalPanels()[0].item;
+      expect(choiceCount(symbolsView)).toBe(6);
+      await symbolsView.cancel();
+      await wait(100);
+
+      spyOn(DummyProvider, 'getSymbols').andCallThrough();
+      spyOn(CacheClearingProvider, 'getSymbols').andCallThrough();
+
+      await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+      expect(choiceCount(symbolsView)).toBe(6);
+      expect(DummyProvider.getSymbols).not.toHaveBeenCalled();
+      expect(CacheClearingProvider.getSymbols).toHaveBeenCalled();
+      await symbolsView.cancel();
+      await editor.save();
+
+      expect(symbolsView.cachedResults.get(editor)).toBeUndefined();
+
+      await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+
+      expect(symbolsView.selectListView.refs.loadingMessage).toBeUndefined();
+      expect(choiceCount(symbolsView)).toBe(6);
+      expect(DummyProvider.getSymbols).toHaveBeenCalled();
+      expect(CacheClearingProvider.getSymbols).toHaveBeenCalled();
       editor.destroy();
       expect(symbolsView.cachedResults.get(editor)).toBeUndefined();
     });
@@ -284,9 +331,127 @@ describe('SymbolsView', () => {
     })
   });
 
-  describe('when toggling project symbols', () => {
+  describe('when going to declaration', () => {
     beforeEach(async () => {
       await atom.workspace.open(directory.resolve('sample.js'))
+    });
+
+    describe('when no declaration is found', () => {
+      beforeEach(async () => {
+        registerProvider(EmptyProvider);
+        editor = atom.workspace.getActiveTextEditor();
+      });
+
+      it("doesn't move the cursor", async () => {
+        await activationPromise;
+        editor.setCursorBufferPosition([0, 2]);
+        atom.commands.dispatch(getEditorView(), 'symbols-view-plus:toggle-project-symbols');
+        await wait(100);
+
+        expect(editor.getCursorBufferPosition()).toEqual([0, 2]);
+      });
+    });
+
+    describe('when there is a single matching declaration', () => {
+      beforeEach(async () => {
+        registerProvider(TaggedProvider);
+        await atom.workspace.open(directory.resolve('tagged.js'));
+        editor = atom.workspace.getActiveTextEditor();
+      });
+
+      it('moves the cursor to the declaration', async () => {
+        editor.setCursorBufferPosition([6, 24]);
+        spyOn(SymbolsView.prototype, 'moveToPosition').andCallThrough();
+
+        atom.commands.dispatch(getEditorView(), 'symbols-view-plus:go-to-declaration');
+
+        await conditionPromise(() => {
+          return SymbolsView.prototype.moveToPosition.callCount === 1;
+        });
+        expect(editor.getCursorBufferPosition()).toEqual([2, 0]);
+      });
+    });
+
+    describe('when there is more than one matching declaration', () => {
+      beforeEach(async () => {
+        registerProvider(TaggedProvider);
+        TaggedProvider.mockResultCount = 2;
+        TaggedProvider.mockFileName = 'other-file.js';
+        await atom.workspace.open(directory.resolve('tagged.js'));
+        editor = atom.workspace.getActiveTextEditor();
+        await activationPromise;
+      });
+
+      afterEach(() => {
+        TaggedProvider.reset();
+      });
+
+      it('displays matches and opens the selected match', async () => {
+        editor.setCursorBufferPosition([8, 14]);
+        atom.commands.dispatch(getEditorView(), 'symbols-view-plus:go-to-declaration');
+        symbolsView = getSymbolsView();
+
+        await conditionPromise(() => {
+          return symbolsView.element.querySelectorAll('li').length > 0;
+        });
+
+        expect(choiceCount(symbolsView)).toBe(2);
+        expect(symbolsView.element).toBeVisible();
+        spyOn(SymbolsView.prototype, 'moveToPosition').andCallThrough();
+        symbolsView.selectListView.confirmSelection();
+
+        await conditionPromise(() => {
+          return SymbolsView.prototype.moveToPosition.callCount === 1;
+        });
+
+        editor = atom.workspace.getActiveTextEditor();
+
+        expect(
+          atom.workspace.getActiveTextEditor().getPath()
+        ).toBe(directory.resolve('other-file.js'));
+
+        expect(
+          atom.workspace.getActiveTextEditor().getCursorBufferPosition()
+        ).toEqual([2, 0]);
+      });
+    });
+  });
+
+  describe('return from declaration', () => {
+    beforeEach(async () => {
+      registerProvider(TaggedProvider);
+      await atom.workspace.open(directory.resolve('tagged.js'));
+      await activationPromise;
+      editor = atom.workspace.getActiveTextEditor();
+    });
+
+    it("doesn't do anything when no go-tos have been triggered", async () => {
+      editor.setCursorBufferPosition([6, 0]);
+      atom.commands.dispatch(getEditorView(), 'symbols-view-plus:return-from-declaration');
+
+      expect(editor.getCursorBufferPosition()).toEqual([6, 0]);
+    });
+
+    it('returns to the previous row and column', async () => {
+      editor.setCursorBufferPosition([6, 24]);
+      editor = atom.workspace.getActiveTextEditor();
+      spyOn(SymbolsView.prototype, 'moveToPosition').andCallThrough();
+      atom.commands.dispatch(getEditorView(), 'symbols-view-plus:go-to-declaration');
+
+      await conditionPromise(() => {
+        return SymbolsView.prototype.moveToPosition.callCount === 1
+      });
+      expect(editor.getCursorBufferPosition()).toEqual([2, 0]);
+      atom.commands.dispatch(getEditorView(), 'symbols-view-plus:return-from-declaration');
+
+      await conditionPromise(() => SymbolsView.prototype.moveToPosition.callCount === 2);
+      expect(editor.getCursorBufferPosition()).toEqual([6, 24]);
+    });
+  });
+
+  describe('when toggling project symbols', () => {
+    beforeEach(async () => {
+      await atom.workspace.open(directory.resolve('sample.js'));
     });
 
     it('displays all symbols', async () => {
@@ -353,6 +518,56 @@ describe('SymbolsView', () => {
       });
     });
 
+    describe('match highlighting', () => {
+      beforeEach(async () => {
+        await atom.workspace.open(directory.resolve('sample.js'));
+        editor = atom.workspace.getActiveTextEditor();
+        registerProvider(QuicksortProvider);
+      });
+
+      it('highlights an exact match', async () => {
+        await activationPromise;
+        await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+
+        symbolsView = getSymbolsView();
+        symbolsView.selectListView.refs.queryEditor.setText('quicksort');
+        await getOrScheduleUpdatePromise();
+        let resultView = symbolsView.element.querySelector('.selected');
+        let matches = resultView.querySelectorAll('.character-match');
+        expect(matches.length).toBe(1);
+        expect(matches[0].textContent).toBe('quicksort');
+      });
+
+      it('highlights a partial match', async () => {
+        await activationPromise;
+        await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+        symbolsView = getSymbolsView();
+
+        symbolsView.selectListView.refs.queryEditor.setText('quick');
+        await getOrScheduleUpdatePromise();
+
+        let resultView = symbolsView.element.querySelector('.selected');
+        let matches = resultView.querySelectorAll('.character-match');
+        expect(matches.length).toBe(1);
+        expect(matches[0].textContent).toBe('quick');
+      });
+
+      it('highlights multiple matches in the symbol name', async () => {
+        await activationPromise;
+        await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+        symbolsView = getSymbolsView();
+
+        symbolsView.selectListView.refs.queryEditor.setText('quicort');
+        await getOrScheduleUpdatePromise();
+
+        let resultView = symbolsView.element.querySelector('.selected');
+        let matches = resultView.querySelectorAll('.character-match');
+        expect(matches.length).toBe(2);
+        expect(matches[0].textContent).toBe('quic');
+        expect(matches[1].textContent).toBe('ort');
+      });
+    });
+
     describe('when quickJumpToSymbol is true', () => {
       beforeEach(async () => {
         await atom.workspace.open(directory.resolve('sample.js'));
@@ -411,5 +626,4 @@ describe('SymbolsView', () => {
       });
     });
   });
-
 });

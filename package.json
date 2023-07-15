@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "main": "./lib/main",
   "description": "Jump to a function/method in the current editor or in the project.",
+  "repository": "https://github.com/savetheclocktower/symbols-view-plus",
   "activationCommands": {
     "atom-workspace": [
       "symbols-view-plus:toggle-project-symbols"

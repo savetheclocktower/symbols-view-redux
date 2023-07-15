@@ -1,4 +1,4 @@
-# symbols-view-plus
+# symbols-view-redux
 
 A refactor of `symbols-view`.
 
@@ -12,13 +12,7 @@ This is, in all likelihood, a temporary package; the code here will be contribut
 
 * Install this package.
 * Install any number of symbol providers (see below).
-* Open your `keymap.cson` for editing.
-* Redefine any `symbols-view` shortcuts so that they prefer `symbols-view-plus` commands; for example:
-
-  ```coffeescript
-  '.platform-darwin atom-text-editor:not([mini])':
-    'cmd-r': 'symbols-view-plus:toggle-file-symbols'
-  ```
+* If key shortcuts still invoke the old `symbols-view`, you may want to disable it.
 
 ## Providers
 

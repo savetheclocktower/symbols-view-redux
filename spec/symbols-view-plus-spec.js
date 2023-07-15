@@ -50,11 +50,11 @@ async function dispatchAndWaitForChoices (commandName) {
 }
 
 function registerProvider (...args) {
-  let pkg = atom.packages.getActivePackage('symbols-view-plus');
+  let pkg = atom.packages.getActivePackage('symbols-view-redux');
   let main = pkg?.mainModule;
   if (!main) {
     let disposable = atom.packages.onDidActivatePackage(pack => {
-      if (pack.name !== 'symbols-view-plus') return;
+      if (pack.name !== 'symbols-view-redux') return;
       for (let provider of args) {
         pack.mainModule.consumeSymbolProvider(provider);
       }
@@ -63,7 +63,7 @@ function registerProvider (...args) {
     // If we let the package lazy-activate the first time a command is invoked,
     // we lose an opportunity to add mock providers. So we should activate it
     // manually.
-    atom.packages.getLoadedPackage('symbols-view-plus').activateNow();
+    atom.packages.getLoadedPackage('symbols-view-redux').activateNow();
   } else {
     for (let provider of args) {
       main.consumeSymbolProvider(provider);
@@ -90,17 +90,17 @@ describe('SymbolsView', () => {
       atom.project.getPaths()[1]
     );
 
-    atom.config.set('symbols-view-plus.showProviderNamesInSymbolsView', false);
+    atom.config.set('symbols-view-redux.showProviderNamesInSymbolsView', false);
 
-    activationPromise = atom.packages.activatePackage('symbols-view-plus');
+    activationPromise = atom.packages.activatePackage('symbols-view-redux');
     activationPromise.then(() => {
-      mainModule = atom.packages.getActivePackage('symbols-view-plus').mainModule;
+      mainModule = atom.packages.getActivePackage('symbols-view-redux').mainModule;
     });
     jasmine.attachToDOM(getWorkspaceView());
   });
 
   afterEach(async () => {
-    await atom.packages.deactivatePackage('symbols-view-plus');
+    await atom.packages.deactivatePackage('symbols-view-redux');
   });
 
   describe('when toggling file symbols', () => {
@@ -111,8 +111,8 @@ describe('SymbolsView', () => {
     it('displays all symbols with line numbers', async () => {
       registerProvider(DummyProvider);
       await activationPromise;
-      await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
-      // atom.commands.dispatch(getEditorView(), 'symbols-view-plus:toggle-file-symbols');
+      await dispatchAndWaitForChoices('symbols-view-redux:toggle-file-symbols');
+      // atom.commands.dispatch(getEditorView(), 'symbols-view-redux:toggle-file-symbols');
       //
       // symbolsView = atom.workspace.getModalPanels()[0].item;
       // await conditionPromise(() => {
@@ -135,7 +135,7 @@ describe('SymbolsView', () => {
       registerProvider(DummyProvider, VerySlowProvider);
       await activationPromise;
       expect(mainModule.broker.providers.length).toBe(2);
-      atom.commands.dispatch(getEditorView(), 'symbols-view-plus:toggle-file-symbols');
+      atom.commands.dispatch(getEditorView(), 'symbols-view-redux:toggle-file-symbols');
 
       symbolsView = atom.workspace.getModalPanels()[0].item;
       await conditionPromise(() => {
@@ -157,19 +157,19 @@ describe('SymbolsView', () => {
       registerProvider(DummyProvider);
       await activationPromise;
       editor = atom.workspace.getActiveTextEditor();
-      await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+      await dispatchAndWaitForChoices('symbols-view-redux:toggle-file-symbols');
       symbolsView = atom.workspace.getModalPanels()[0].item;
       await symbolsView.cancel();
 
       spyOn(DummyProvider, 'getSymbols').andCallThrough();
 
-      await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+      await dispatchAndWaitForChoices('symbols-view-redux:toggle-file-symbols');
       expect(choiceCount(symbolsView)).toBe(5);
       expect(DummyProvider.getSymbols).not.toHaveBeenCalled();
       await symbolsView.cancel();
 
       await editor.save();
-      await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+      await dispatchAndWaitForChoices('symbols-view-redux:toggle-file-symbols');
 
       expect(symbolsView.selectListView.refs.loadingMessage).toBeUndefined();
       expect(choiceCount(symbolsView)).toBe(5);
@@ -182,7 +182,7 @@ describe('SymbolsView', () => {
       registerProvider(DummyProvider, CacheClearingProvider);
       await activationPromise;
       editor = atom.workspace.getActiveTextEditor();
-      await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+      await dispatchAndWaitForChoices('symbols-view-redux:toggle-file-symbols');
       symbolsView = atom.workspace.getModalPanels()[0].item;
       expect(choiceCount(symbolsView)).toBe(6);
       await symbolsView.cancel();
@@ -191,7 +191,7 @@ describe('SymbolsView', () => {
       spyOn(DummyProvider, 'getSymbols').andCallThrough();
       spyOn(CacheClearingProvider, 'getSymbols').andCallThrough();
 
-      await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+      await dispatchAndWaitForChoices('symbols-view-redux:toggle-file-symbols');
       expect(choiceCount(symbolsView)).toBe(6);
       expect(DummyProvider.getSymbols).not.toHaveBeenCalled();
       expect(CacheClearingProvider.getSymbols).toHaveBeenCalled();
@@ -200,7 +200,7 @@ describe('SymbolsView', () => {
 
       expect(symbolsView.cachedResults.get(editor)).toBeUndefined();
 
-      await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+      await dispatchAndWaitForChoices('symbols-view-redux:toggle-file-symbols');
 
       expect(symbolsView.selectListView.refs.loadingMessage).toBeUndefined();
       expect(choiceCount(symbolsView)).toBe(6);
@@ -213,7 +213,7 @@ describe('SymbolsView', () => {
     it('displays a message when no tags match text in mini-editor', async () => {
       registerProvider(DummyProvider);
       await activationPromise;
-      await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+      await dispatchAndWaitForChoices('symbols-view-redux:toggle-file-symbols');
 
       symbolsView = getSymbolsView();
       symbolsView.selectListView.refs.queryEditor.setText('nothing will match this');
@@ -235,7 +235,7 @@ describe('SymbolsView', () => {
       await activationPromise;
       editor = atom.workspace.getActiveTextEditor();
       expect(editor.getCursorBufferPosition()).toEqual([0, 0]);
-      await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+      await dispatchAndWaitForChoices('symbols-view-redux:toggle-file-symbols');
       symbolsView = getSymbolsView();
 
       symbolsView.element.querySelectorAll('li')[1].click();
@@ -250,7 +250,7 @@ describe('SymbolsView', () => {
           spyOn(CompetingExclusiveProvider, 'getSymbols').andCallThrough();
           spyOn(DummyProvider, 'getSymbols').andCallThrough();
           await activationPromise;
-          await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+          await dispatchAndWaitForChoices('symbols-view-redux:toggle-file-symbols');
           symbolsView = getSymbolsView();
           expect(choiceCount(symbolsView)).toBe(5);
           expect(DummyProvider.getSymbols).toHaveBeenCalled();
@@ -260,7 +260,7 @@ describe('SymbolsView', () => {
 
       describe('and one is listed in `preferCertainProviders`', () => {
         beforeEach(() => {
-          atom.config.set('symbols-view-plus.preferCertainProviders', ['symbol-provider-competing-exclusive']);
+          atom.config.set('symbols-view-redux.preferCertainProviders', ['symbol-provider-competing-exclusive']);
         });
 
         it('prefers the one with the highest score (providers listed beating those not listed)', async () => {
@@ -268,7 +268,7 @@ describe('SymbolsView', () => {
           spyOn(CompetingExclusiveProvider, 'getSymbols').andCallThrough();
           spyOn(DummyProvider, 'getSymbols').andCallThrough();
           await activationPromise;
-          await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+          await dispatchAndWaitForChoices('symbols-view-redux:toggle-file-symbols');
           symbolsView = getSymbolsView();
           expect(choiceCount(symbolsView)).toBe(5);
           expect(DummyProvider.getSymbols).not.toHaveBeenCalled();
@@ -278,7 +278,7 @@ describe('SymbolsView', () => {
 
       describe('and more than one is listed in `preferCertainProviders`', () => {
         beforeEach(() => {
-          atom.config.set('symbols-view-plus.preferCertainProviders', ['symbol-provider-competing-exclusive', 'symbol-provider-dummy']);
+          atom.config.set('symbols-view-redux.preferCertainProviders', ['symbol-provider-competing-exclusive', 'symbol-provider-dummy']);
         });
 
         it('prefers the one with the highest score (providers listed earlier beating those listed later)', async () => {
@@ -286,7 +286,7 @@ describe('SymbolsView', () => {
           spyOn(CompetingExclusiveProvider, 'getSymbols').andCallThrough();
           spyOn(DummyProvider, 'getSymbols').andCallThrough();
           await activationPromise;
-          await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+          await dispatchAndWaitForChoices('symbols-view-redux:toggle-file-symbols');
           symbolsView = getSymbolsView();
           expect(choiceCount(symbolsView)).toBe(5);
           expect(DummyProvider.getSymbols).not.toHaveBeenCalled();
@@ -299,7 +299,7 @@ describe('SymbolsView', () => {
       it('shows the list view with an error message', async () => {
         registerProvider(EmptyProvider);
         await activationPromise;
-        atom.commands.dispatch(getEditorView(), 'symbols-view-plus:toggle-file-symbols');
+        atom.commands.dispatch(getEditorView(), 'symbols-view-redux:toggle-file-symbols');
         await conditionPromise(() => getSymbolsView()?.selectListView.refs.emptyMessage);
         symbolsView = getSymbolsView();
 
@@ -317,7 +317,7 @@ describe('SymbolsView', () => {
         registerProvider(UselessProvider);
         await activationPromise;
         expect(mainModule.broker.providers.length).toBe(1);
-        atom.commands.dispatch(getEditorView(), 'symbols-view-plus:toggle-file-symbols');
+        atom.commands.dispatch(getEditorView(), 'symbols-view-redux:toggle-file-symbols');
 
         await wait(1000);
         symbolsView = atom.workspace.getModalPanels()[0].item;
@@ -345,7 +345,7 @@ describe('SymbolsView', () => {
       it("doesn't move the cursor", async () => {
         await activationPromise;
         editor.setCursorBufferPosition([0, 2]);
-        atom.commands.dispatch(getEditorView(), 'symbols-view-plus:toggle-project-symbols');
+        atom.commands.dispatch(getEditorView(), 'symbols-view-redux:toggle-project-symbols');
         await wait(100);
 
         expect(editor.getCursorBufferPosition()).toEqual([0, 2]);
@@ -363,7 +363,7 @@ describe('SymbolsView', () => {
         editor.setCursorBufferPosition([6, 24]);
         spyOn(SymbolsView.prototype, 'moveToPosition').andCallThrough();
 
-        atom.commands.dispatch(getEditorView(), 'symbols-view-plus:go-to-declaration');
+        atom.commands.dispatch(getEditorView(), 'symbols-view-redux:go-to-declaration');
 
         await conditionPromise(() => {
           return SymbolsView.prototype.moveToPosition.callCount === 1;
@@ -388,7 +388,7 @@ describe('SymbolsView', () => {
 
       it('displays matches and opens the selected match', async () => {
         editor.setCursorBufferPosition([8, 14]);
-        atom.commands.dispatch(getEditorView(), 'symbols-view-plus:go-to-declaration');
+        atom.commands.dispatch(getEditorView(), 'symbols-view-redux:go-to-declaration');
         symbolsView = getSymbolsView();
 
         await conditionPromise(() => {
@@ -427,7 +427,7 @@ describe('SymbolsView', () => {
 
     it("doesn't do anything when no go-tos have been triggered", async () => {
       editor.setCursorBufferPosition([6, 0]);
-      atom.commands.dispatch(getEditorView(), 'symbols-view-plus:return-from-declaration');
+      atom.commands.dispatch(getEditorView(), 'symbols-view-redux:return-from-declaration');
 
       expect(editor.getCursorBufferPosition()).toEqual([6, 0]);
     });
@@ -436,13 +436,13 @@ describe('SymbolsView', () => {
       editor.setCursorBufferPosition([6, 24]);
       editor = atom.workspace.getActiveTextEditor();
       spyOn(SymbolsView.prototype, 'moveToPosition').andCallThrough();
-      atom.commands.dispatch(getEditorView(), 'symbols-view-plus:go-to-declaration');
+      atom.commands.dispatch(getEditorView(), 'symbols-view-redux:go-to-declaration');
 
       await conditionPromise(() => {
         return SymbolsView.prototype.moveToPosition.callCount === 1
       });
       expect(editor.getCursorBufferPosition()).toEqual([2, 0]);
-      atom.commands.dispatch(getEditorView(), 'symbols-view-plus:return-from-declaration');
+      atom.commands.dispatch(getEditorView(), 'symbols-view-redux:return-from-declaration');
 
       await conditionPromise(() => SymbolsView.prototype.moveToPosition.callCount === 2);
       expect(editor.getCursorBufferPosition()).toEqual([6, 24]);
@@ -457,7 +457,7 @@ describe('SymbolsView', () => {
     it('displays all symbols', async () => {
       registerProvider(DummyProvider);
       await activationPromise;
-      await dispatchAndWaitForChoices('symbols-view-plus:toggle-project-symbols');
+      await dispatchAndWaitForChoices('symbols-view-redux:toggle-project-symbols');
       symbolsView = atom.workspace.getModalPanels()[0].item;
 
       expect(symbolsView.selectListView.refs.loadingMessage).toBeUndefined();
@@ -484,7 +484,7 @@ describe('SymbolsView', () => {
         await atom.workspace.open(directory.resolve('tagged.js'));
         await activationPromise;
         expect(getWorkspaceView().querySelector('.symbols-view')).toBeNull();
-        await dispatchAndWaitForChoices('symbols-view-plus:toggle-project-symbols');
+        await dispatchAndWaitForChoices('symbols-view-redux:toggle-project-symbols');
         symbolsView = getSymbolsView();
 
         expect(choiceCount(symbolsView)).toBe(1);
@@ -501,7 +501,7 @@ describe('SymbolsView', () => {
         it("doesn't open the editor", async () => {
           registerProvider(TaggedProvider);
           await activationPromise;
-          await dispatchAndWaitForChoices('symbols-view-plus:toggle-project-symbols');
+          await dispatchAndWaitForChoices('symbols-view-redux:toggle-project-symbols');
           symbolsView = getSymbolsView();
 
           spyOn(atom.workspace, 'open').andCallThrough();
@@ -527,7 +527,7 @@ describe('SymbolsView', () => {
 
       it('highlights an exact match', async () => {
         await activationPromise;
-        await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+        await dispatchAndWaitForChoices('symbols-view-redux:toggle-file-symbols');
 
         symbolsView = getSymbolsView();
         symbolsView.selectListView.refs.queryEditor.setText('quicksort');
@@ -540,7 +540,7 @@ describe('SymbolsView', () => {
 
       it('highlights a partial match', async () => {
         await activationPromise;
-        await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+        await dispatchAndWaitForChoices('symbols-view-redux:toggle-file-symbols');
         symbolsView = getSymbolsView();
 
         symbolsView.selectListView.refs.queryEditor.setText('quick');
@@ -554,7 +554,7 @@ describe('SymbolsView', () => {
 
       it('highlights multiple matches in the symbol name', async () => {
         await activationPromise;
-        await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+        await dispatchAndWaitForChoices('symbols-view-redux:toggle-file-symbols');
         symbolsView = getSymbolsView();
 
         symbolsView.selectListView.refs.queryEditor.setText('quicort');
@@ -578,7 +578,7 @@ describe('SymbolsView', () => {
         await activationPromise;
         editor = atom.workspace.getActiveTextEditor();
         expect(editor.getCursorBufferPosition()).toEqual([0, 0]);
-        await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+        await dispatchAndWaitForChoices('symbols-view-redux:toggle-file-symbols');
         symbolsView = getSymbolsView();
 
         symbolsView.selectListView.selectNext();
@@ -596,7 +596,7 @@ describe('SymbolsView', () => {
         editor = atom.workspace.getActiveTextEditor();
         editor.setSelectedBufferRanges(bufferRanges);
 
-        await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+        await dispatchAndWaitForChoices('symbols-view-redux:toggle-file-symbols');
         symbolsView = getSymbolsView();
 
         symbolsView.selectListView.selectNext();
@@ -609,7 +609,7 @@ describe('SymbolsView', () => {
 
     describe('when quickJumpToSymbol is false', () => {
       beforeEach(async () => {
-        atom.config.set('symbols-view-plus.quickJumpToFileSymbol', false);
+        atom.config.set('symbols-view-redux.quickJumpToFileSymbol', false);
         await atom.workspace.open(directory.resolve('sample.js'));
       });
 
@@ -619,7 +619,7 @@ describe('SymbolsView', () => {
         editor = atom.workspace.getActiveTextEditor();
         expect(editor.getCursorBufferPosition()).toEqual([0, 0]);
 
-        await dispatchAndWaitForChoices('symbols-view-plus:toggle-file-symbols');
+        await dispatchAndWaitForChoices('symbols-view-redux:toggle-file-symbols');
         symbolsView = getSymbolsView();
         symbolsView.selectListView.selectNext();
         expect(editor.getCursorBufferPosition()).toEqual([0, 0]);

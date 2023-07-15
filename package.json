@@ -1,6 +1,6 @@
 {
   "name": "symbols-view-plus",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "./lib/main",
   "description": "Jump to a function/method in the current editor or in the project.",
   "repository": "https://github.com/savetheclocktower/symbols-view-plus",

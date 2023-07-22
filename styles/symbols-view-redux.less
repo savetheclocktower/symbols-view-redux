@@ -1,0 +1,57 @@
+@import "ui-variables";
+
+// Highlight matched text
+.symbols-view .list-group .character-match {
+  color: @text-color-highlight;
+  font-weight: bold;
+}
+
+.symbols-view {
+  .primary-line {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+
+    .name {
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: pre;
+      margin-right: auto;
+    }
+
+    .badge-container {
+      display: block;
+      flex-grow: 0;
+      display: flex;
+      flex-direction: row;
+
+      .badge:not(:last-child) {
+        margin-right: 5px;
+      }
+    }
+
+    .badge-symbol-tag {
+      text-transform: capitalize;
+    }
+  }
+
+  .secondary-line {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: baseline;
+    max-width: 100%;
+
+    .location {
+      display: block;
+    }
+
+    .context {
+      display: block;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      flex-grow: 0;
+    }
+  }
+
+}

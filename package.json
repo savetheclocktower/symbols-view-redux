@@ -1,6 +1,6 @@
 {
   "name": "symbols-view-redux",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "main": "./lib/main",
   "description": "Jump to a function/method in the current editor or in the project.",
   "repository": "https://github.com/savetheclocktower/symbols-view-redux",

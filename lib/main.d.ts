@@ -3,6 +3,27 @@ import type { TextEditor, Point, Range as AtomRange } from 'atom';
 
 type MaybePromise<T> = T | Promise<T>;
 
+// The properties that a provider is allowed to modify on a `SelectList`
+// instance during symbol retrieval.
+type ListControllerParams = Partial<{
+  errorMessage: string,
+  emptyMessage: string,
+  loadingMessage: string,
+  laodingBadge: string
+}>;
+
+type ListControllerParamName = keyof ListControllerParams;
+
+// An object given to the exclusive provider during symbol retrieval. The
+// provider can use this to control certain aspects of the symbol list's UI.
+type ListController = {
+  // Set props on the `SelectList` instance.
+  set (params: ListControllerParams): void,
+
+  // Clear any number of props on the `SelectList` instance.
+  clear(...propNames: ListControllerParamName[]): void
+};
+
 export type SymbolPosition = {
   // An instance of `Point` describing the symbol's location. The `column`
   // value of the point may be ignored, depending on the user's settings. At
@@ -208,9 +229,14 @@ export interface SymbolProvider {
   // is invalid or cannot be completed — for instance, if the user cancels the
   // task — you should return `null`.
   //
+  // The second argument, `listController`, will be present _only_ for the
+  // provider marked with `isExclusive: true`. It allows the provider to set
+  // and clear UI messages if needed. Supplemental providers don't receive this
+  // argument.
+  //
   // This method can go async if needed.
-  getSymbols(meta: FileSymbolMeta): MaybePromise<FileSymbol[] | null>
-  getSymbols(meta: ProjectSymbolMeta): MaybePromise<ProjectSymbol[] | null>
+  getSymbols(meta: FileSymbolMeta, listController?: ListController): MaybePromise<FileSymbol[] | null>
+  getSymbols(meta: ProjectSymbolMeta, listController?: ListController): MaybePromise<ProjectSymbol[] | null>
 }
 
 type SymbolProviderMainModule = {

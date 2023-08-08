@@ -2,11 +2,13 @@
   "name": "symbols-view-redux",
   "version": "0.0.5",
   "main": "./lib/main",
+  "types": "./lib/main.d.ts",
   "description": "Jump to a function/method in the current editor or in the project.",
   "repository": "https://github.com/savetheclocktower/symbols-view-redux",
   "activationCommands": {
     "atom-workspace": [
-      "symbols-view-redux:toggle-project-symbols"
+      "symbols-view-redux:toggle-project-symbols",
+      "symbols-view-redux:show-active-providers"
     ],
     "atom-text-editor": [
       "symbols-view-redux:go-to-declaration",
@@ -29,6 +31,11 @@
       "type": "boolean",
       "description": "When enabled, the name of the provider will be shown alongside each result."
     },
+    "showIconsInSymbolsView": {
+      "default": true,
+      "type": "boolean",
+      "description": "When enabled, an icon will be shown alongside a symbol if the symbol provider specifies one."
+    },
     "preferCertainProviders": {
       "default": [],
       "type": "array",
@@ -41,6 +48,11 @@
       "default": false,
       "type": "boolean",
       "description": "Whether to use an assortment of colors for symbol badges. If enabled, each badge will be one of sixteen colors based on its text. Badge colors are generated automatically as hue variants of your ordinary badge color."
+    },
+    "providerTimeout": {
+      "default": 2000,
+      "type": "number",
+      "description": "How long providers have to respond to symbol requests before this package gives up and shows the list. If a certain provider is particularly slow, you may have to increase this value. Does not apply to project-wide symbol search **if** the list is already visible."
     }
   },
   "consumedServices": {

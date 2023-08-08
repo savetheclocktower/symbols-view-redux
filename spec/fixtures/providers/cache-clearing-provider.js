@@ -1,5 +1,5 @@
 const { Emitter, Point } = require('atom');
-const path = require('path');
+// const path = require('path');
 
 function last (arr) {
   return arr[arr.length - 1];
@@ -9,7 +9,7 @@ module.exports = {
   packageName: 'symbol-provider-cache-clearing',
   name: 'Cache-clearing',
   isExclusive: false,
-  canProvideSymbols (meta) {
+  canProvideSymbols (_meta) {
     return true;
   },
   onShouldClearCache (callback) {
@@ -20,7 +20,7 @@ module.exports = {
     let { editor, type } = meta;
     let results = [];
     setTimeout(() => {
-      this.emitter.emit('should-clear-cache', editor);
+      this.emitter.emit('should-clear-cache', { editor });
     }, 0);
     if (type === 'file') {
       results = [{

@@ -36,7 +36,7 @@ export async function conditionPromise (condition)  {
     await timeoutPromise(100);
 
     let conditionResult = condition();
-    if (condition instanceof Promise) {
+    if (conditionResult instanceof Promise) {
       conditionResult = await conditionResult;
     }
 
@@ -52,7 +52,7 @@ export async function conditionPromise (condition)  {
 
 export function timeoutPromise (timeout) {
   return new Promise(function (resolve) {
-  global.setTimeout(resolve, timeout);
+    global.setTimeout(resolve, timeout);
   });
 }
 

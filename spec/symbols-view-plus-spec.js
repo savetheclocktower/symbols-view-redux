@@ -5,6 +5,7 @@ const temp = require('temp');
 const SymbolsView = require('../lib/symbols-view');
 
 const DummyProvider = require('./fixtures/providers/dummy-provider');
+const AsyncDummyProvider = require('./fixtures/providers/async-provider');
 const QuicksortProvider = require('./fixtures/providers/quicksort-provider.js');
 const VerySlowProvider = require('./fixtures/providers/very-slow-provider');
 const UselessProvider = require('./fixtures/providers/useless-provider.js');
@@ -15,13 +16,12 @@ const CompetingExclusiveProvider = require('./fixtures/providers/competing-exclu
 
 const { it, fit, ffit, fffit, beforeEach, afterEach, conditionPromise } = require('./async-spec-helpers');
 
-
 async function wait (ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function getOrScheduleUpdatePromise () {
-  return new Promise((resolve) => etch.getScheduler().updateDocument(resolve))
+  return new Promise((resolve) => etch.getScheduler().updateDocument(resolve));
 }
 
 function choiceCount (symbolsView) {
@@ -91,6 +91,7 @@ describe('SymbolsView', () => {
     );
 
     atom.config.set('symbols-view-redux.showProviderNamesInSymbolsView', false);
+    atom.config.set('symbols-view-redux.showIconsInSymbolsView', false);
 
     activationPromise = atom.packages.activatePackage('symbols-view-redux');
     activationPromise.then(() => {
@@ -105,20 +106,14 @@ describe('SymbolsView', () => {
 
   describe('when toggling file symbols', () => {
     beforeEach(async () => {
-      await atom.workspace.open(directory.resolve('sample.js'))
+      atom.config.set('symbols-view-redux.providerTimeout', 500);
+      await atom.workspace.open(directory.resolve('sample.js'));
     });
 
     it('displays all symbols with line numbers', async () => {
       registerProvider(DummyProvider);
       await activationPromise;
       await dispatchAndWaitForChoices('symbols-view-redux:toggle-file-symbols');
-      // atom.commands.dispatch(getEditorView(), 'symbols-view-redux:toggle-file-symbols');
-      //
-      // symbolsView = atom.workspace.getModalPanels()[0].item;
-      // await conditionPromise(() => {
-      //   let count = symbolsView.element.querySelectorAll('li').length;
-      //   return count > 0;
-      // });
       symbolsView = getSymbolsView();
 
       expect(symbolsView.selectListView.refs.loadingMessage).toBeUndefined();
@@ -129,6 +124,12 @@ describe('SymbolsView', () => {
       expect(symbolsView.element.querySelector('li:first-child .secondary-line')).toHaveText('Line 1');
       expect(symbolsView.element.querySelector('li:last-child .primary-line')).toHaveText('Symbol on Row 13');
       expect(symbolsView.element.querySelector('li:last-child .secondary-line')).toHaveText('Line 13');
+
+      // No icon-related classes should be added when `showIconsInSymbolsView`
+      // is false.
+      expect(symbolsView.element.querySelector('li:first-child .primary-line').classList.contains('icon')).toBe(false);
+      expect(symbolsView.element.querySelector('li:first-child .primary-line').classList.contains('no-icon')).toBe(false);
+
     });
 
     it('does not wait for providers that take too long', async () => {
@@ -138,7 +139,8 @@ describe('SymbolsView', () => {
       atom.commands.dispatch(getEditorView(), 'symbols-view-redux:toggle-file-symbols');
 
       symbolsView = atom.workspace.getModalPanels()[0].item;
-      await conditionPromise(() => {
+      await conditionPromise(async () => {
+        await getOrScheduleUpdatePromise();
         let count = symbolsView.element.querySelectorAll('li').length;
         return count > 0;
       });
@@ -151,6 +153,24 @@ describe('SymbolsView', () => {
       expect(symbolsView.element.querySelector('li:first-child .secondary-line')).toHaveText('Line 1');
       expect(symbolsView.element.querySelector('li:last-child .primary-line')).toHaveText('Symbol on Row 13');
       expect(symbolsView.element.querySelector('li:last-child .secondary-line')).toHaveText('Line 13');
+    });
+
+    it('allows the exclusive provider to control certain UI aspects', async () => {
+      registerProvider(AsyncDummyProvider);
+      await activationPromise;
+      expect(mainModule.broker.providers.length).toBe(1);
+      atom.commands.dispatch(getEditorView(), 'symbols-view-redux:toggle-file-symbols');
+      symbolsView = getSymbolsView();
+      spyOn(symbolsView.selectListView, 'update').andCallThrough();
+      await conditionPromise(async () => {
+        await getOrScheduleUpdatePromise();
+        let count = symbolsView.element.querySelectorAll('li').length;
+        return count > 0;
+      });
+
+      expect(symbolsView.selectListView.update).toHaveBeenCalledWith(
+        { loadingMessage: 'Loading…' }
+      );
     });
 
     it('caches tags until the editor changes', async () => {
@@ -309,7 +329,7 @@ describe('SymbolsView', () => {
         expect(refs.emptyMessage).toBeVisible();
         expect(refs.emptyMessage.textContent.length).toBeGreaterThan(0);
         expect(refs.loadingMessage).not.toBeVisible();
-      })
+      });
     });
 
     describe("when symbols can't be generated for a file", () => {
@@ -328,12 +348,39 @@ describe('SymbolsView', () => {
         ).toBe(0);
         expect(symbolsView.element).not.toBeVisible();
       });
-    })
+    });
+
+    describe("when the user has enabled icons in the symbols list", () => {
+      beforeEach(() => {
+        atom.config.set('symbols-view-redux.showIconsInSymbolsView', true);
+      });
+
+      it('shows icons in the symbols list', async () => {
+        registerProvider(DummyProvider);
+        await activationPromise;
+        await dispatchAndWaitForChoices('symbols-view-redux:toggle-file-symbols');
+        symbolsView = getSymbolsView();
+
+        expect(symbolsView.selectListView.refs.loadingMessage).toBeUndefined();
+        expect(document.body.contains(symbolsView.element)).toBe(true);
+        expect(symbolsView.element.querySelectorAll('li').length).toBe(5);
+
+        expect(symbolsView.element.querySelector('li:first-child .primary-line').classList.contains('icon-package')).toBe(true);
+        expect(symbolsView.element.querySelector('li:first-child .secondary-line').classList.contains('no-icon')).toBe(true);
+
+        expect(symbolsView.element.querySelector('li:nth-child(2) .primary-line').classList.contains('icon-key')).toBe(true);
+        expect(symbolsView.element.querySelector('li:nth-child(3) .primary-line').classList.contains('icon-gear')).toBe(true);
+        expect(symbolsView.element.querySelector('li:nth-child(4) .primary-line').classList.contains('icon-tag')).toBe(true);
+
+        // Simulate lack of icon on a random element.
+        expect(symbolsView.element.querySelector('li:nth-child(5) .primary-line').classList.contains('no-icon')).toBe(true);
+      });
+    });
   });
 
   describe('when going to declaration', () => {
     beforeEach(async () => {
-      await atom.workspace.open(directory.resolve('sample.js'))
+      await atom.workspace.open(directory.resolve('sample.js'));
     });
 
     describe('when no declaration is found', () => {
@@ -439,7 +486,7 @@ describe('SymbolsView', () => {
       atom.commands.dispatch(getEditorView(), 'symbols-view-redux:go-to-declaration');
 
       await conditionPromise(() => {
-        return SymbolsView.prototype.moveToPosition.callCount === 1
+        return SymbolsView.prototype.moveToPosition.callCount === 1;
       });
       expect(editor.getCursorBufferPosition()).toEqual([2, 0]);
       atom.commands.dispatch(getEditorView(), 'symbols-view-redux:return-from-declaration');

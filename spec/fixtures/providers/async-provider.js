@@ -1,7 +1,12 @@
 const { Point } = require('atom');
+// const path = require('path');
 
 function last (arr) {
   return arr[arr.length - 1];
+}
+
+async function wait (ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 const ICONS = [
@@ -13,19 +18,21 @@ const ICONS = [
 ];
 
 module.exports = {
-  packageName: 'symbol-provider-dummy',
-  name: 'Dummy',
+  packageName: 'symbol-provider-dummy-async',
+  name: 'Dummy (Async)',
   isExclusive: true,
-  canProvideSymbols () {
+  canProvideSymbols (_meta) {
     return true;
   },
-  getSymbols (meta) {
+  async getSymbols (meta, listController) {
     let { editor, type } = meta;
     let results = [];
     if (type === 'file') {
       let count = editor.getLineCount();
       // Put a symbol on every third line.
       for (let i = 0; i < count; i += 3) {
+        // let index = i % (ICONS.length + 1);
+        // console.log('icon index for', i, 'is', index);
         results.push({
           position: new Point(i, 0),
           name: `Symbol on Row ${i + 1}`,
@@ -46,6 +53,11 @@ module.exports = {
         });
       }
     }
+    await wait(100);
+    console.log('ListController setting!');
+    listController.set({ loadingMessage: 'Loading…' });
+    await wait(250);
+    listController.clear('loadingMessage');
     return results;
   }
 };

@@ -10,13 +10,11 @@ module.exports = {
   packageName: 'symbol-provider-very-slow',
   name: 'Very Slow',
   isExclusive: false,
-  canProvideSymbols (meta) {
+  canProvideSymbols () {
     return true;
   },
   async getSymbols (meta) {
-    let { editor, signal } = meta;
-    let count = editor.getLineCount();
-    let results = [];
+    let { signal } = meta;
     await wait(3000);
     if (signal.aborted) {
       return null;

@@ -6,6 +6,7 @@ const SymbolsView = require('../lib/symbols-view');
 
 const DummyProvider = require('./fixtures/providers/dummy-provider');
 const AsyncDummyProvider = require('./fixtures/providers/async-provider');
+const ProgressiveProjectProvider = require('./fixtures/providers/progressive-project-provider.js');
 const QuicksortProvider = require('./fixtures/providers/quicksort-provider.js');
 const VerySlowProvider = require('./fixtures/providers/very-slow-provider');
 const UselessProvider = require('./fixtures/providers/useless-provider.js');
@@ -298,7 +299,9 @@ describe('SymbolsView', () => {
 
       describe('and more than one is listed in `preferCertainProviders`', () => {
         beforeEach(() => {
-          atom.config.set('symbols-view-redux.preferCertainProviders', ['symbol-provider-competing-exclusive', 'symbol-provider-dummy']);
+          // Last time we referred to this one by its package name; now we use
+          // its human-friendly name. They should be interchangeable.
+          atom.config.set('symbols-view-redux.preferCertainProviders', ['Competing Exclusive', 'symbol-provider-dummy']);
         });
 
         it('prefers the one with the highest score (providers listed earlier beating those listed later)', async () => {
@@ -519,6 +522,29 @@ describe('SymbolsView', () => {
       expect(symbolsView.element.querySelector('li:first-child .secondary-line')).toHaveText(`${relative}:1`);
       expect(symbolsView.element.querySelector('li:last-child .primary-line')).toHaveText('Symbol on Row 13');
       expect(symbolsView.element.querySelector('li:last-child .secondary-line')).toHaveText(`${relative}:13`);
+    });
+
+    it('asks for new symbols when the user starts typing', async () => {
+      registerProvider(ProgressiveProjectProvider);
+      await activationPromise;
+      atom.commands.dispatch(getEditorView(), 'symbols-view-redux:toggle-project-symbols');
+      symbolsView = atom.workspace.getModalPanels()[0].item;
+      spyOn(symbolsView.listController, 'set').andCallThrough();
+      await wait(500);
+
+      expect(symbolsView.element.querySelectorAll('li .primary-line').length).toBe(0);
+      expect(ProgressiveProjectProvider.getSymbols.callCount).toBe(1);
+
+      expect(symbolsView.selectListView.props.emptyMessage).toBe('Query must be at least 3 characters long.');
+
+      await symbolsView.updateView({ query: 'lor' });
+      await wait(500);
+
+      expect(symbolsView.selectListView.props.emptyMessage).toBeNull();
+
+      expect(symbolsView.element.querySelectorAll('li .primary-line').length).toBe(1);
+      expect(symbolsView.element.querySelector('li:first-child .primary-line')).toHaveText('Lorem ipsum');
+      expect(ProgressiveProjectProvider.getSymbols.callCount).toBe(2);
     });
 
     describe('when there is only one project', () => {

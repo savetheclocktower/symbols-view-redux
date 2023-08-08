@@ -1,5 +1,4 @@
 const { Point } = require('atom');
-const path = require('path');
 
 function last (arr) {
   return arr[arr.length - 1];
@@ -7,9 +6,9 @@ function last (arr) {
 
 module.exports = {
   packageName: 'symbol-provider-competing-exclusive',
-  name: 'Competing Exclsive',
+  name: 'Competing Exclusive',
   isExclusive: true,
-  canProvideSymbols (meta) {
+  canProvideSymbols () {
     return 0.9;
   },
   getSymbols (meta) {

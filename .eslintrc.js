@@ -13,6 +13,7 @@ module.exports = {
     atom: true
   },
   rules: {
+    "semi": ["error", "always"],
     "space-before-function-paren": ["error", "always"],
     "no-cond-assign": "off"
   }

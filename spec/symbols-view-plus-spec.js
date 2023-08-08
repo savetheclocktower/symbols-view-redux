@@ -526,11 +526,11 @@ describe('SymbolsView', () => {
 
     it('asks for new symbols when the user starts typing', async () => {
       registerProvider(ProgressiveProjectProvider);
+      spyOn(ProgressiveProjectProvider, 'getSymbols').andCallThrough();
       await activationPromise;
       atom.commands.dispatch(getEditorView(), 'symbols-view-redux:toggle-project-symbols');
       symbolsView = atom.workspace.getModalPanels()[0].item;
-      spyOn(symbolsView.listController, 'set').andCallThrough();
-      await wait(500);
+      await wait(200);
 
       expect(symbolsView.element.querySelectorAll('li .primary-line').length).toBe(0);
       expect(ProgressiveProjectProvider.getSymbols.callCount).toBe(1);
@@ -538,7 +538,7 @@ describe('SymbolsView', () => {
       expect(symbolsView.selectListView.props.emptyMessage).toBe('Query must be at least 3 characters long.');
 
       await symbolsView.updateView({ query: 'lor' });
-      await wait(500);
+      await wait(200);
 
       expect(symbolsView.selectListView.props.emptyMessage).toBeNull();
 

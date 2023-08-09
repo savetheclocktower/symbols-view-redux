@@ -5,17 +5,6 @@
   "types": "./lib/main.d.ts",
   "description": "Jump to a function/method in the current editor or in the project.",
   "repository": "https://github.com/savetheclocktower/symbols-view-redux",
-  "activationCommands": {
-    "atom-workspace": [
-      "symbols-view-redux:toggle-project-symbols",
-      "symbols-view-redux:show-active-providers"
-    ],
-    "atom-text-editor": [
-      "symbols-view-redux:go-to-declaration",
-      "symbols-view-redux:return-from-declaration",
-      "symbols-view-redux:toggle-file-symbols"
-    ]
-  },
   "engines": {
     "atom": "*",
     "node": ">=14"
@@ -60,6 +49,13 @@
       "description": "Allows external sources to suggest symbols for a given file or project.",
       "versions": {
         "1.0.0": "consumeSymbolProvider"
+      }
+    }
+  },
+  "providedServices": {
+    "hyperclick": {
+      "versions": {
+        "0.1.0": "provideHyperclick"
       }
     }
   },

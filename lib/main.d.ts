@@ -119,6 +119,12 @@ export type SymbolMeta = {
   // is done on the frontend as the user types.
   query?: string,
 
+  // The relevant range in the buffer.
+  //
+  // This may be present when `type` is `project-find` and the consumer wants
+  // to resolve an arbitrary buffer range instead of the word under the cursor.
+  range?: Range,
+
   // An `AbortSignal` that represents whether the user has cancelled the task.
   // This will happen if the user cancels out of the symbol UI while waiting
   // for symbols, or if they type a new character in the query field before the

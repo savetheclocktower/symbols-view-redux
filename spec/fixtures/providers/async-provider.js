@@ -31,8 +31,6 @@ module.exports = {
       let count = editor.getLineCount();
       // Put a symbol on every third line.
       for (let i = 0; i < count; i += 3) {
-        // let index = i % (ICONS.length + 1);
-        // console.log('icon index for', i, 'is', index);
         results.push({
           position: new Point(i, 0),
           name: `Symbol on Row ${i + 1}`,
@@ -54,7 +52,6 @@ module.exports = {
       }
     }
     await wait(100);
-    console.log('ListController setting!');
     listController.set({ loadingMessage: 'Loading…' });
     await wait(250);
     listController.clear('loadingMessage');

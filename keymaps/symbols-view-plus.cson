@@ -1,12 +1,14 @@
-'.platform-darwin atom-text-editor':
+'.platform-darwin atom-text-editor:not([mini])':
   'cmd-r': 'symbols-view-redux:toggle-file-symbols'
   'cmd-alt-down': 'symbols-view-redux:go-to-declaration'
   'cmd-alt-up': 'symbols-view-redux:return-from-declaration'
 
-'.platform-win32 atom-text-editor':
+'.platform-win32 atom-text-editor:not([mini])':
   'ctrl-r': 'symbols-view-redux:toggle-file-symbols'
+  'ctrl-alt-down': 'symbols-view-redux:go-to-declaration'
+  'ctrl-alt-up': 'symbols-view-redux:return-from-declaration'
 
-'.platform-linux atom-text-editor':
+'.platform-linux atom-text-editor:not([mini])':
   'ctrl-r': 'symbols-view-redux:toggle-file-symbols'
   'ctrl-alt-down': 'symbols-view-redux:go-to-declaration'
   'ctrl-alt-up': 'symbols-view-redux:return-from-declaration'

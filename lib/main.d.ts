@@ -5,6 +5,14 @@ type MaybePromise<T> = T | Promise<T>;
 
 // The properties that a provider is allowed to modify on a `SelectList`
 // instance during symbol retrieval.
+//
+// A provider that marks itself as `isExclusive: true` will be allowed to set
+// certain UI messages on the `SelectList`. This allows the provider to offer
+// UI guidance messages.
+//
+// For instance, if a project-wide symbol search is taking place, the provider
+// could set an `emptyMessage` of “Query must be at least X characters long” to
+// explain why no results are present at first.
 type ListControllerParams = Partial<{
   errorMessage: string,
   emptyMessage: string,
@@ -52,6 +60,9 @@ export type SymbolPath = {
   path: string
 };
 
+// The only required fields in a file symbol are (a) the `name` of the symbol,
+// and (b) a reference to its row in the buffer (via either `position` or
+// `range`). Other fields are optional, but make for a richer UI presentation.
 export type FileSymbol = (SymbolPosition | SymbolRange) & {
   // The name of the symbol. This value will be shown in the UI and will be
   // filtered against if the user types in the text box. Required.
@@ -91,8 +102,13 @@ export type FileSymbol = (SymbolPosition | SymbolRange) & {
   source?: string
 };
 
+// A project symbol has the additional requirement of specifying the file in
+// which each symbol is located, via either the `path` property or both
+// `directory` and `file`.
 export type ProjectSymbol = FileSymbol & (SymbolDirectoryAndFile | SymbolPath);
 
+// Metadata received by a symbol provider as part of a call to
+// `canProvideSymbols` or `getSymbols`.
 export type SymbolMeta = {
   // The type of action being performed:
   //
@@ -125,25 +141,30 @@ export type SymbolMeta = {
   // to resolve an arbitrary buffer range instead of the word under the cursor.
   range?: Range,
 
-  // An `AbortSignal` that represents whether the user has cancelled the task.
-  // This will happen if the user cancels out of the symbol UI while waiting
-  // for symbols, or if they type a new character in the query field before the
-  // results have returned for the previous typed character.
+  // An `AbortSignal` that represents whether the task has been cancelled. This
+  // will happen if the user cancels out of the symbol UI while waiting for
+  // symbols, or if they type a new character in the query field before the
+  // results have returned for the previous typed character. It will also
+  // happen if the provider exceeds the amount of time allotted to it (see
+  // `timeoutMs` below).
   //
   // If the provider goes async at any point, it should check the signal after
-  // resuming. If the signal has aborted, the provider should immediately
-  // return/resolve with `null` and avoid doing unnecessary further work.
+  // resuming. If the signal has aborted, then there is no point in continuing.
+  // The provider should immediately return/resolve with `null` and avoid doing
+  // unnecessary further work.
   signal: AbortSignal,
 
   // The amount of time, in milliseconds, the provider has before it must
   // return results. This value is configurable by the user. If the provider
   // doesn't return anything after this amount of time, it will be ignored.
   //
-  // This value is given to providers so that they can act wisely when faced
-  // with a choice between “search for more symbols” and “return what we have.”
+  // The provider is not in charge of ensuring that it returns results within
+  // this amount of time; `symbols-view` enforces that on its own. This value
+  // is given to providers so that they can act wisely when faced with a choice
+  // between “search for more symbols” and “return what we have.”
   //
   // The `timeoutMs` property is only present when the appropriate symbol list
-  // UI is not present. Its purpose is to show the UI within a reasonable
+  // UI is not yet present. Its purpose is to show the UI within a reasonable
   // amount of time. If the UI is already present — for instance, when
   // winnowing results in a project-wide symbol search — `timeoutMs` will be
   // omitted, and the provider can take as much time as it deems appropriate.
@@ -218,7 +239,7 @@ export interface SymbolProvider {
   // * A provider that works by analyzing code on disk, rather than looking at
   //   the current unsaved contents of buffers, could return a slightly lower
   //   score if asked to complete symbols for a file that has been modified.
-  //   This would indicate that it’d be slightly worse than usual candidate.
+  //   This would indicate that it’d be a slightly worse than usual candidate.
   //
   // Since language server providers will have to ask their servers about
   // capabilities, this method can go async, though it’s strongly suggested to
@@ -240,19 +261,19 @@ export interface SymbolProvider {
   // and clear UI messages if needed. Supplemental providers don't receive this
   // argument.
   //
-  // This method can go async if needed.
+  // This method can go async if needed. If it performs any async tasks, it
+  // should check `meta.signal` afterward to see if it should cancel.
   getSymbols(meta: FileSymbolMeta, listController?: ListController): MaybePromise<FileSymbol[] | null>
   getSymbols(meta: ProjectSymbolMeta, listController?: ListController): MaybePromise<ProjectSymbol[] | null>
 }
 
-type SymbolProviderMainModule = {
+export type SymbolProviderMainModule = {
   activate(): void,
   deacivate(): void,
 
-  // No business logic should go in here. If a package wants to provide
-  // symbols only under certain circumstances, it should decide those
-  // circumstances on demand, rather than return this provider only
-  // conditionally.
+  // No business logic should go in here. If a package wants to provide symbols
+  // only under certain circumstances, it should decide those circumstances on
+  // demand, rather than return this provider only conditionally.
   //
   // A provider author may argue that they should be allowed to inspect the
   // environment before deciding what (or if) to return — but anything they'd
@@ -262,13 +283,17 @@ type SymbolProviderMainModule = {
   // So, for instance, if a certain provider only works with PHP files, it
   // should return its instance here no matter what, and that instance can
   // respond to `canProvideSymbols` with `false` if the given editor isn't
-  // using a PHP grammar. It shouldn't try to get clever and bail out
-  // entirely if, say, the project doesn't have any PHP files on load —
-  // because, of course, it _could_ add a PHP file at any point, and we're
-  // not going to revisit the decision later.
+  // using a PHP grammar. It shouldn't try to get clever and bail out entirely
+  // if, say, the project doesn't have any PHP files on load — because, of
+  // course, it _could_ add a PHP file at any point, and we're not going to
+  // revisit the decision later.
   //
-  // We should probably allow a package to return an _array_ of providers as
-  // an alternative to returning a single provider.
+  // Likewise, if a provider depends upon a language server that may or may not
+  // be running, it should not try to be clever about what it returns from
+  // `provideSymbols`. Instead, it should return early from `canProvideSymbols`
+  // when the language server isn't running.
   //
-  provideSymbols(): SymbolProvider
+  // A single package can supply multiple providers if need be.
+  //
+  provideSymbols(): SymbolProvider | [SymbolProvider...]
 };

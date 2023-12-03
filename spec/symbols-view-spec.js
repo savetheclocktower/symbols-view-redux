@@ -4,6 +4,8 @@ const fs = require('fs-plus');
 const temp = require('temp');
 const SymbolsView = require('../lib/symbols-view');
 
+const { migrateOldConfigIfNeeded } = require('../lib/util');
+
 const DummyProvider = require('./fixtures/providers/dummy-provider');
 const AsyncDummyProvider = require('./fixtures/providers/async-provider');
 const ProgressiveProjectProvider = require('./fixtures/providers/progressive-project-provider.js');
@@ -698,5 +700,81 @@ describe('SymbolsView', () => {
         expect(editor.getCursorBufferPosition()).toEqual([0, 0]);
       });
     });
+  });
+
+  describe('when migrating legacy setting', () => {
+    beforeEach(async () => {
+      atom.config.set(
+        'symbols-view.useEditorGrammarAsCtagsLanguage',
+        false,
+        { source: atom.config.getUserConfigPath() }
+      );
+      spyOn(atom.notifications, 'addInfo');
+    });
+
+    afterEach(async () => {
+      atom.config.unset(
+        'symbols-view.useEditorGrammarAsCtagsLanguage',
+        { source: atom.config.getUserConfigPath() }
+      );
+    });
+
+    it('migrates the setting as expected', () => {
+      expect(
+        atom.config.get('symbols-view.useEditorGrammarAsCtagsLanguage')
+      ).toBe(false);
+
+      migrateOldConfigIfNeeded({ force: true });
+
+      expect(
+        atom.config.get(
+          'symbols-view.useEditorGrammarAsCtagsLanguage',
+          { source: atom.config.getUserConfigPath() }
+        )
+      ).toBeUndefined();
+
+      expect(
+        atom.config.get(
+          'symbol-provider-ctags.useEditorGrammarAsCtagsLanguage',
+          { source: atom.config.getUserConfigPath() }
+        )
+      ).toBe(false);
+
+      expect(atom.notifications.addInfo).not.toHaveBeenCalled();
+    });
+
+    describe('and a scope-specific override has been made for that setting', () => {
+      beforeEach(() => {
+        atom.config.set(
+          'symbols-view.useEditorGrammarAsCtagsLanguage',
+          true,
+          {
+            source: 'baz',
+            scopeSelector: ['.source.ts']
+          }
+        );
+      });
+
+      afterEach(() => {
+        atom.config.unset(
+          'symbols-view.useEditorGrammarAsCtagsLanguage',
+          {
+            source: 'baz',
+            scopeSelector: ['.source.ts']
+          }
+        );
+      });
+
+      fit('alerts the user', () => {
+        migrateOldConfigIfNeeded({ force: true });
+
+        expect(atom.notifications.addInfo).toHaveBeenCalled();
+
+        expect(
+          atom.notifications.addInfo.mostRecentCall?.args[1].description
+        ).toBe("The `symbols-view` package has migrated the setting `symbols-view.useEditorGrammarAsCtagsLanguage` to its new location inside the core package `symbol-provider-ctags`. If you have defined any scope-specific overrides for this setting, you’ll need to change those overrides manually.\n\nDetected overrides in the following locations:\n\n* `baz`");
+      });
+    });
+
   });
 });
